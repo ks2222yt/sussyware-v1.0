@@ -5,7 +5,9 @@ import requests, threading, tkinter
 import pygetwindow as gw
 import mouse, keyboard, win32api,random
 import math
-from PIL import Image
+
+
+
 
 
 
@@ -91,28 +93,6 @@ def world_to_screen(matrix, posx, posy, posz, width, height):
     return -999,-999
 
 
-
-def load_texture(image_path):
-        
-    img = Image.open(image_path)
-    img = img.transpose(Image.FLIP_TOP_BOTTOM)  
-    img_data = img.convert("RGBA").tobytes()
-
-        
-    texture_id = gl.glGenTextures(1)
-    gl.glBindTexture(gl.GL_TEXTURE_2D, texture_id)
-
-
-    gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
-    gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
-    gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-    gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-
-       
-    gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA, img.width, img.height, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, img_data)
-
-    return texture_id, img.width, img.height
-
 bone_pairs = [
     (1, 5), (5, 8), (8, 9), (9, 11),
     (5, 13), (13, 14), (14, 16),
@@ -125,36 +105,112 @@ def get_bone_pos(bone_id):
     boneZ = pm.read_float(bone_matrix + bone_id * 0x20 + 0x8)          
     bone_pos_x, bone_pos_y = world_to_screen(view_matrix, boneX, boneY, boneZ, screenx, screeny)
     return [bone_pos_x, bone_pos_y]
+ 
+class esp:
+    def arrow(target_x, target_y, screen_center_x, screen_center_y, distance_from_center):
+        gl.glColor3b(*(int(gui.get_value('arrcolor')[0] / 2), int(gui.get_value('arrcolor')[1] / 2), int(gui.get_value('arrcolor')[2] / 2)))
+        dx = target_x - screen_center_x
+        dy = target_y - screen_center_y
 
-def draw_bone(bone1_id, bone2_id):
-    bone1 = get_bone_pos(bone1_id)
-    bone2 = get_bone_pos(bone2_id)
-    gl.glVertex2f(bone1[0], screeny - bone1[1])
-    gl.glVertex2f(bone2[0], screeny - bone2[1])
+        distance_to_target = math.sqrt(dx * dx + dy * dy)
 
-def filter_pos(list_):
-    if not list_:
-        return None
+        arrow_length = 30
+
+        if distance_to_target < distance_from_center:
+            return
+
+        dx /= distance_to_target
+        dy /= distance_to_target
+
+        base_x = screen_center_x + dx * distance_from_center
+        base_y = screen_center_y + dy * distance_from_center
+
+        tip_x = base_x - dx * arrow_length
+        tip_y = base_y - dy * arrow_length
+
+        arrowhead_width = 20
+
+        perp_dx = -dy
+        perp_dy = dx
+
+        left_x = tip_x + perp_dx * (arrowhead_width / 2)
+        left_y = tip_y + perp_dy * (arrowhead_width / 2)
+        right_x = tip_x - perp_dx * (arrowhead_width / 2)
+        right_y = tip_y - perp_dy * (arrowhead_width / 2)
+
+        gl.glEnd()
+        gl.glBegin(gl.GL_TRIANGLES)
+
+        gl.glVertex2f(base_x, base_y)
+        gl.glVertex2f(left_x, left_y)
+        gl.glVertex2f(right_x, right_y)
+
+        gl.glEnd()
+        gl.glBegin(gl.GL_LINES)
+
+        
+    def BoxEsp(head_pos_x,head_pos_y,leg_pos_y,head_leg):
+        gl.glColor3b(*(int(gui.get_value('boxcolor')[0] / 2), int(gui.get_value('boxcolor')[1] / 2), int(gui.get_value('boxcolor')[2] / 2)))
+        gl.glVertex2f(head_pos_x - head_leg // 3 -1, screeny - leg_pos_y)
+        gl.glVertex2f(head_pos_x + head_leg // 3, screeny - leg_pos_y)
+        gl.glVertex2f(head_pos_x - head_leg // 3, screeny - leg_pos_y)
+        gl.glVertex2f(head_pos_x - head_leg // 3, screeny - head_pos_y)
+        gl.glVertex2f(head_pos_x + head_leg // 3, screeny - leg_pos_y)
+        gl.glVertex2f(head_pos_x + head_leg // 3, screeny - head_pos_y)
+        gl.glVertex2f(head_pos_x - head_leg // 3, screeny - head_pos_y)
+        gl.glVertex2f(head_pos_x + head_leg // 3, screeny - head_pos_y)
+
+    def draw_bone(bone1_id, bone2_id):
+        gl.glColor3b(*(int(gui.get_value('bonecolor')[0] / 2), int(gui.get_value('bonecolor')[1] / 2), int(gui.get_value('bonecolor')[2] / 2)))
+        bone1 = get_bone_pos(bone1_id)
+        bone2 = get_bone_pos(bone2_id)
+        gl.glVertex2f(bone1[0], screeny - bone1[1])
+        gl.glVertex2f(bone2[0], screeny - bone2[1])
+
+    def fillbox(head_pos_x,head_pos_y,leg_pos_y,head_leg):
+        
+        gl.glEnd()
+
+        gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+        gl.glColor4f(0, 0, 0, 0.5)
+
+        gl.glBegin(gl.GL_QUADS)
+
+        gl.glVertex2f(head_pos_x + head_leg//3,screeny - leg_pos_y)
+
+        gl.glVertex2f(head_pos_x - head_leg//3,screeny - leg_pos_y) 
+
+        gl.glVertex2f(head_pos_x - head_leg//3,screeny - head_pos_y) 
+                
+        gl.glVertex2f(head_pos_x + head_leg//3,screeny - head_pos_y)
+                
+        gl.glEnd()
+
+        gl.glBegin(gl.GL_LINES)
+    
+    def HPbar(head_pos_x,head_pos_y,leg_pos_y,head_leg,entity_health):
+        
+        delta_hp = (leg_pos_y-head_pos_y)*entity_health
+                
+        gl.glColor3b(*(0, 120, 0))
+        gl.glVertex2f(head_pos_x - head_leg // 3 - 5 - thick, screeny - leg_pos_y)
+        gl.glVertex2f(head_pos_x - head_leg // 3 - 5 - thick, screeny - head_pos_y)
+
+        gl.glColor3b(*(120, 0, 0))
+        gl.glVertex2f(head_pos_x - head_leg // 3 - 5 - thick, screeny - head_pos_y)
+        gl.glVertex2f(head_pos_x - head_leg // 3 - 5 - thick, screeny - leg_pos_y + delta_hp) 
+                
 
 
-    min_sum = float('inf')
-    closest = None
-
-    for element in list_:
-        sum_abs = sum(abs(x) for x in element)
-
-        if sum_abs < min_sum:
-            min_sum = sum_abs
-            closest = element
-    return closest 
-
-
-
+    
+    
+    
 
 
 def cheat():
     gl.glBegin(gl.GL_LINES)
-    global view_matrix,entity,list_entry,entity_controller,entity_controller_pawn,list_entry,entity_pawn,entity_alive,entity_team,game_scene,bone_matrix
+    global view_matrix
     view_matrix = []
     for i in range(16):
         temp_mat_val = pm.read_float(client + dwViewMatrix + i * 4)
@@ -169,121 +225,89 @@ def cheat():
     
     for i in range(64):
         entity = pm.read_longlong(client + dwEntityList)             
-        if not entity:
-            continue         
+        if not entity:continue         
+        
         list_entry = pm.read_longlong(entity + ((8 * (i & 0x7FFF) >> 9) + 16))
-        if not list_entry:
-            continue
+        
+        if not list_entry:continue
+        
         entity_controller = pm.read_longlong(list_entry + (120) * (i & 0x1FF))
-        if not entity_controller:
-            continue
+        
+        if not entity_controller:continue
+        
         entity_controller_pawn = pm.read_longlong(entity_controller + m_hPlayerPawn)
-        if not entity_controller_pawn:
-            continue
+        
+        if not entity_controller_pawn:continue
+        
         list_entry = pm.read_longlong(entity + (0x8 * ((entity_controller_pawn & 0x7FFF) >> 9) + 16))
-        if not list_entry:
-            continue
+        
+        if not list_entry:continue
+        
         entity_pawn = pm.read_longlong(list_entry + (120) * (entity_controller_pawn & 0x1FF))
-        if not entity_pawn or entity_pawn == local_player_pawn:
-            continue
+        
+        if not entity_pawn or entity_pawn == local_player_pawn:continue
+        
         entity_alive = pm.read_int(entity_pawn + m_lifeState)
-        if entity_alive != 256:
-            continue
+        
+        if entity_alive != 256:continue
+        
         entity_team = pm.read_int(entity_pawn + m_iTeamNum)
-        if entity_team == local_player_team:
-            continue
+        
+        if gui.get_value('tcheck') or gui.get_value('tcheck1'):
+            if entity_team == local_player_team:continue
+        if pm.read_int(entity_pawn + m_iHealth) < 1:continue
+        
         global bone_matrix
         game_scene = pm.read_longlong(entity_pawn + m_pGameSceneNode)
         bone_matrix = pm.read_longlong(game_scene + m_modelState + 0x80)
 
-
-
-
         try:
-
+            
             head_pos_x = get_bone_pos(6)[0]
             head_pos_y = get_bone_pos(6)[1]
             leg_pos_y = get_bone_pos(28)[1]
-            
+
             if gui.get_value('aim') and head_pos_x != -999 and head_pos_y != -999:
                 targets.append([head_pos_x,head_pos_y,entity_pawn])
             
             if head_pos_x == -999 and head_pos_y == -999:
                 continue
+
             
                     
             head_leg = abs(head_pos_y - leg_pos_y)
             
-            
-            
-            gl.glColor3b(*(int(gui.get_value('color')[0] / 2), int(gui.get_value('color')[1] / 2), int(gui.get_value('color')[2] / 2)))
 
             if gui.get_value('fillbox'):
-
-                gl.glEnd()
-
-
-                gl.glEnable(gl.GL_BLEND)
-                gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
-                gl.glColor4f(0, 0, 0, 0.5)
-
-                gl.glBegin(gl.GL_QUADS)
-
-                gl.glVertex2f(head_pos_x + head_leg//3,screeny - leg_pos_y)
-
-                gl.glVertex2f(head_pos_x - head_leg//3,screeny - leg_pos_y) 
-
-                gl.glVertex2f(head_pos_x - head_leg//3,screeny - head_pos_y) 
-
-                gl.glVertex2f(head_pos_x + head_leg//3,screeny - head_pos_y)
-                gl.glEnd()
-                gl.glColor3b(*(int(gui.get_value('color')[0] / 2), int(gui.get_value('color')[1] / 2), int(gui.get_value('color')[2] / 2)))
-
-
-                gl.glBegin(gl.GL_LINES)
-            
+                esp.fillbox(head_pos_x,head_pos_y,leg_pos_y,head_leg)
+     
+      
             if gui.get_value('esp'):
-                gl.glVertex2f(head_pos_x - head_leg // 3 -1, screeny - leg_pos_y)
-                gl.glVertex2f(head_pos_x + head_leg // 3, screeny - leg_pos_y)
-                gl.glVertex2f(head_pos_x - head_leg // 3, screeny - leg_pos_y)
-                gl.glVertex2f(head_pos_x - head_leg // 3, screeny - head_pos_y)
-                gl.glVertex2f(head_pos_x + head_leg // 3, screeny - leg_pos_y)
-                gl.glVertex2f(head_pos_x + head_leg // 3, screeny - head_pos_y)
-                gl.glVertex2f(head_pos_x - head_leg // 3, screeny - head_pos_y)
-                gl.glVertex2f(head_pos_x + head_leg // 3, screeny - head_pos_y)
-            
+                esp.BoxEsp(head_pos_x,head_pos_y,leg_pos_y,head_leg)
+      
+         
+            if gui.get_value('tracs'):
+                esp.arrow(head_pos_x,screeny-head_pos_y,screenx/2,screeny/2,75)
 
 
-            if gui.get_value('aa'):
+            if gui.get_value('bonesp'):
                 for bone1_id, bone2_id in bone_pairs:
-                    draw_bone(bone1_id, bone2_id)
-                
+                    esp.draw_bone(bone1_id, bone2_id)
 
 
             if gui.get_value('hpbar'):
-                
-                entity_health = pm.read_int(entity_pawn + m_iHealth)/100
-                delta_hp = (leg_pos_y-head_pos_y)*entity_health
-                
-                gl.glColor3b(*(0, 120, 0))
-                gl.glVertex2f(head_pos_x - head_leg // 3 - 5 - thick, screeny - leg_pos_y)
-                gl.glVertex2f(head_pos_x - head_leg // 3 - 5 - thick, screeny - head_pos_y)
+                esp.HPbar(head_pos_x,head_pos_y,leg_pos_y,head_leg,pm.read_int(entity_pawn + m_iHealth)/100)
 
-                gl.glColor3b(*(120, 0, 0))
-                gl.glVertex2f(head_pos_x - head_leg // 3 - 5 - thick, screeny - head_pos_y)
-                gl.glVertex2f(head_pos_x - head_leg // 3 - 5 - thick, screeny - leg_pos_y + delta_hp) 
-                
-                gl.glColor3b(*(int(gui.get_value('color')[0] / 2), int(gui.get_value('color')[1] / 2), int(gui.get_value('color')[2] / 2)))
-
-
+            
             if pm.read_int(local_player_pawn + m_iIDEntIndex) > 0 and keyboard.is_pressed(gui.get_value('trkey')) and gui.get_value('trig'):
                 mouse.click()
 
-        except Exception:
-            pass
+        
+        except Exception as e:
+            print(e)
 
     
-    
+    gl.glColor3b(*(int(gui.get_value('aimcolor')[0] / 2), int(gui.get_value('aimcolor')[1] / 2), int(gui.get_value('aimcolor')[2] / 2)))
     try:
         to_shot = []
         if gui.get_value('aim') and targets is not None:
@@ -319,7 +343,7 @@ def cheat():
                 for xd in range(gui.get_value('strenght')):
                     if keyboard.is_pressed(gui.get_value('aimkey')):
                         win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, target_x_dist, target_y_dist, 0, 0)
-                        if gui.get_value('shaff')and abs(target_x_dist) <= 4 and abs(target_y_dist) <= 4:
+                        if gui.get_value('shaff')and abs(target_x_dist) <= 2 and abs(target_y_dist) <= 2:
                             mouse.click()
        
 
@@ -329,7 +353,6 @@ def cheat():
                 except:
                     pass
     except:None                
-
 
    
    
@@ -363,6 +386,10 @@ def main():
 
     handle = win32gui.FindWindow(0, 'Sussyware cs2')
 
+
+    gl.glMatrixMode(gl.GL_PROJECTION)
+    gl.glLoadIdentity()
+    gl.glMatrixMode(gl.GL_MODELVIEW)
     while True:
         try:
             gw.getWindowsWithTitle(title='Counter-Strike 2')[0].activate()
@@ -376,7 +403,6 @@ def main():
             thick = 1
             glfw.swap_buffers(window)
             gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-            glfw.poll_events()
             time.sleep(0.0000001)
             gl.glLineWidth(thick)
             
@@ -385,10 +411,15 @@ def main():
             if keyboard.is_pressed('ins'):
                 while True:
                     try:
+                        gw.getWindowsWithTitle(title='Sussyware cs2')[0].restore()
                         gw.getWindowsWithTitle(title='Sussyware cs2')[0].activate()
                         break
                     except:None
         except:None
+
+
+
+
 
 
         
@@ -403,44 +434,96 @@ def startmain():
 
 
 
-gui.create_context()
-gui.create_viewport(title='Sussyware cs2', width=400, height=400, decorated=True)
-gui.setup_dearpygui()
-gui.set_viewport_resizable(False)
 
 
 
 def threads():
     threading.Thread(target=startmain, daemon=True).start()
 
+def close_viewport():
+    gui.stop_dearpygui()
+
+def minimize_viewport():
+    gui.minimize_viewport()
+
+gui.create_context()
+gui.create_viewport(title='Sussyware cs2', width=500, height=500, decorated=False)
+gui.setup_dearpygui()
+gui.set_viewport_resizable(False)
 
 
-with gui.window(label='Sussyware cs2', width=400,height=400,no_title_bar=True,no_resize=True, no_move=True, show=True, tag='mainwindow'):
-    with gui.tab_bar(label='cross'): 
+with gui.window(label='', width=500, height=500, no_title_bar=True, no_resize=True, no_move=True, show=True, tag='mainwindow'):
+    with gui.group(horizontal=True):
+        gui.add_text("Sussyware cs2", color=(255, 255, 255, 255), tag="title_text", bullet=True)
+        gui.add_spacer(width=255)
+        with gui.group(horizontal=True):
+            gui.add_button(label="-", callback=minimize_viewport, width=50, height=30)
+            gui.add_button(label="X", callback=close_viewport, width=50, height=30)
+
+    with gui.tab_bar(label='cheat'):
         with gui.tab(label='Visual'):
             with gui.group(horizontal=True):
-                with gui.group(horizontal=False):
-                    gui.add_checkbox(label='Box Esp',tag='esp')
-                    gui.add_checkbox(label='Stick Esp',tag='aa')
-                    gui.add_checkbox(label='HP Bar',tag='hpbar')
-                    gui.add_checkbox(label='fillbox',tag='fillbox')
-                gui.add_color_picker(label='color:',tag='color', default_value=[255.0,255.0,255.0,255.0],height=180,width=180)
-
+                gui.add_checkbox(label='Box Esp ', tag='esp')
+                gui.add_spacer(width=5)
+                gui.add_color_edit(label='', tag='boxcolor', default_value=[255.0, 255.0, 255.0, 255.0], height=180, width=180)
+            gui.add_spacer(width=5)
+            with gui.group(horizontal=True):
+                gui.add_checkbox(label='Bone Esp', tag='bonesp', default_value=True)
+                gui.add_spacer(width=5)
+                gui.add_color_edit(label='', tag='bonecolor', default_value=[255.0, 255.0, 255.0, 255.0], height=180, width=180)
+            gui.add_spacer(width=5)
+            with gui.group(horizontal=True):
+                gui.add_checkbox(label='HP Bar  ', tag='hpbar', default_value=True)
+            gui.add_spacer(width=5)
+            with gui.group(horizontal=True):
+                gui.add_checkbox(label='Fill Box', tag='fillbox', default_value=True)
+            gui.add_spacer(width=5)
+            with gui.group(horizontal=True):
+                gui.add_checkbox(label='Arrows  ', tag='tracs')
+                gui.add_spacer(width=5)
+                gui.add_color_edit(label='', tag='arrcolor', default_value=[255.0, 255.0, 255.0, 255.0], height=180, width=180)
+            gui.add_spacer(width=5)
+            gui.add_checkbox(label='Team Check', tag='tcheck', default_value=True)
                 
         with gui.tab(label='Combat'):
-            gui.add_input_text(label='trigger key', tag='trkey')
-            gui.add_checkbox(label='legit triggerbot (can target objects like doors)',tag='trig')
-            gui.add_separator()
-            gui.add_slider_int(label='aim Fov',tag='aimfov',min_value=10,max_value=360,default_value=50)
-            gui.add_input_text(label='aim key', tag='aimkey')
-            gui.add_slider_int(label='aim strenght',tag='strenght',min_value=1,max_value=5,default_value=2)
-            gui.add_checkbox(label='aimbot',tag='aim')
-            gui.add_checkbox(label='shot after aim',tag='shaff')
-            
+            with gui.collapsing_header(label='Triggerbot Settings'):
+                gui.add_input_text(label='Trigger Key', tag='trkey')
+                gui.add_checkbox(label='Legit Triggerbot (can target objects like doors)', tag='trig')
+                gui.add_separator()
+            with gui.collapsing_header(label='Aimbot Settings'):
+                gui.add_slider_int(label='Aim Fov', tag='aimfov', min_value=10, max_value=360, default_value=150)
+                gui.add_slider_int(label='Aim Strength', tag='strenght', min_value=1, max_value=5, default_value=3)
+                gui.add_input_text(label='Aimbot Key', tag='aimkey', default_value='v')
+                gui.add_checkbox(label='Aimbot', tag='aim', default_value=True)
+                gui.add_checkbox(label='Shot After Aim', tag='shaff')
+                gui.add_color_edit(label='Fov Color', tag='aimcolor', default_value=[255.0, 255.0, 255.0, 255.0], height=180, width=180)
+            gui.add_checkbox(label='Team Check', source='tcheck')
 
 
+
+with gui.theme() as theme:
+    with gui.theme_component(gui.mvAll):
+        gui.add_theme_color(gui.mvThemeCol_WindowBg, (0, 0, 0, 255))
+        gui.add_theme_color(gui.mvThemeCol_Button, (50, 50, 50, 255))
+        gui.add_theme_color(gui.mvThemeCol_Text, (255, 255, 255, 255))
+        gui.add_theme_color(gui.mvThemeCol_Tab, (50, 50, 50, 255))
+        gui.add_theme_color(gui.mvThemeCol_FrameBg, (50, 50, 50, 255))
+        gui.add_theme_color(gui.mvThemeCol_SliderGrab, (150, 150, 150, 255))
+        gui.add_theme_color(gui.mvThemeCol_FrameBgActive, (90, 90, 90, 255))
+        gui.add_theme_color(gui.mvThemeCol_TabActive, (90, 90, 90, 255))
+        gui.add_theme_color(gui.mvThemeCol_TabHovered, (70, 70, 70, 255))
+        gui.add_theme_color(gui.mvThemeCol_FrameBgHovered, (70, 70, 70, 255))
+        gui.add_theme_color(gui.mvThemeCol_ButtonHovered, (80, 80, 80, 255))
+        gui.add_theme_color(gui.mvThemeCol_SliderGrabActive, (255, 0, 0, 255))
+        gui.add_theme_color(gui.mvThemeCol_SliderGrab, (255, 0, 0, 255))
+        gui.add_theme_color(gui.mvThemeCol_PopupBg, (0, 0, 0, 255))
+        gui.add_theme_color(gui.mvThemeCol_CheckMark, (255, 0, 0, 255))
+        gui.add_theme_color(gui.mvThemeCol_HeaderHovered, (70, 70, 70, 255))
+
+gui.bind_theme(theme)
 
 gui.show_viewport()
+gui.set_viewport_pos(pos=(screenx/2-250,screeny/2-250))
 threads()
 gui.start_dearpygui()
 gui.destroy_context()
