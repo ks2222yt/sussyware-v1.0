@@ -1,10 +1,12 @@
 import dearpygui.dearpygui as gui
 import time,glfw,win32con,win32gui,pymem,pymem.process
 import OpenGL.GL as gl
-import requests, threading, tkinter
+import threading, tkinter
 import pygetwindow as gw
-import mouse, keyboard, win32api,random
-import math
+import mouse, keyboard, win32api
+import math, requests
+
+
 
 
 
@@ -15,49 +17,51 @@ screenx = tkinter.Tk().winfo_screenwidth()
 screeny = tkinter.Tk().winfo_screenheight()
 
 targets = []
+
 print('getting offsets')
 
-dwEntityList = 27122008
-dwLocalPlayerPawn = 25434856
-dwViewMatrix = 27523808
-m_iTeamNum = 995
-m_lifeState = 840
-m_pGameSceneNode = 808
-m_modelState = 368
-m_hPlayerPawn = 2060
-m_iHealth = 836
-m_iIDEntIndex = 5208
+# dwEntityList = 27126136
+# dwLocalPlayerPawn = 25438952
+# dwViewMatrix = 27527936
+# m_iTeamNum = 995
+# m_lifeState = 840
+# m_pGameSceneNode = 808
+# m_modelState = 368
+# m_hPlayerPawn = 2060
+# m_iHealth = 836
+# m_iIDEntIndex = 5208
 
 
-# try:
-#     offsets = requests.get('https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/offsets.json').json()
-#     client_dll = requests.get('https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/client_dll.json').json()
-#     dwEntityList = offsets['client.dll']['dwEntityList']
-#     dwLocalPlayerPawn = offsets['client.dll']['dwLocalPlayerPawn']
-#     dwViewMatrix = offsets['client.dll']['dwViewMatrix']
-#     m_iTeamNum = client_dll['client.dll']['classes']['C_BaseEntity']['fields']['m_iTeamNum']
-#     m_lifeState = client_dll['client.dll']['classes']['C_BaseEntity']['fields']['m_lifeState']
-#     m_pGameSceneNode = client_dll['client.dll']['classes']['C_BaseEntity']['fields']['m_pGameSceneNode']
-#     m_modelState = client_dll['client.dll']['classes']['CSkeletonInstance']['fields']['m_modelState']
-#     m_hPlayerPawn = client_dll['client.dll']['classes']['CCSPlayerController']['fields']['m_hPlayerPawn']
-#     m_iHealth = client_dll['client.dll']['classes']['C_BaseEntity']['fields']['m_iHealth']
-#     m_iIDEntIndex = client_dll['client.dll']['classes']['C_CSPlayerPawnBase']['fields']['m_iIDEntIndex']
+try:
+    offsets = requests.get('https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/offsets.json').json()
+    client_dll = requests.get('https://raw.githubusercontent.com/a2x/cs2-dumper/main/output/client_dll.json').json()
+    dwEntityList = offsets['client.dll']['dwEntityList']
+    dwLocalPlayerPawn = offsets['client.dll']['dwLocalPlayerPawn']
+    dwViewMatrix = offsets['client.dll']['dwViewMatrix']
+    m_iTeamNum = client_dll['client.dll']['classes']['C_BaseEntity']['fields']['m_iTeamNum']
+    m_lifeState = client_dll['client.dll']['classes']['C_BaseEntity']['fields']['m_lifeState']
+    m_pGameSceneNode = client_dll['client.dll']['classes']['C_BaseEntity']['fields']['m_pGameSceneNode']
+    m_modelState = client_dll['client.dll']['classes']['CSkeletonInstance']['fields']['m_modelState']
+    m_hPlayerPawn = client_dll['client.dll']['classes']['CCSPlayerController']['fields']['m_hPlayerPawn']
+    m_iHealth = client_dll['client.dll']['classes']['C_BaseEntity']['fields']['m_iHealth']
+    m_iIDEntIndex = client_dll['client.dll']['classes']['C_CSPlayerPawnBase']['fields']['m_iIDEntIndex']
 
-#     print("dwEntityList =",dwEntityList)
-#     print("dwLocalPlayerPawn =",dwLocalPlayerPawn)
-#     print("dwViewMatrix =",dwViewMatrix)
-#     print("m_iTeamNum =",m_iTeamNum)
-#     print("m_lifeState =",m_lifeState)
-#     print("m_pGameSceneNode =",m_pGameSceneNode)
-#     print("m_modelState =",m_modelState)
-#     print("m_hPlayerPawn =",m_hPlayerPawn)
-#     print("m_iHealth =",m_iHealth)
-#     print("m_iIDEntIndex =",m_iIDEntIndex)
+    print("dwEntityList =",dwEntityList)
+    print("dwLocalPlayerPawn =",dwLocalPlayerPawn)
+    print("dwViewMatrix =",dwViewMatrix)
+    print("m_iTeamNum =",m_iTeamNum)
+    print("m_lifeState =",m_lifeState)
+    print("m_pGameSceneNode =",m_pGameSceneNode)
+    print("m_modelState =",m_modelState)
+    print("m_hPlayerPawn =",m_hPlayerPawn)
+    print("m_iHealth =",m_iHealth)
+    print("m_iIDEntIndex =",m_iIDEntIndex)
 
 
-# except: 
-#     print('cannot get offsets')
-#     exit(0)
+except: 
+    print('cannot get offsets')
+    exit(0)
+
 
 
 
@@ -147,8 +151,7 @@ class esp:
 
         gl.glEnd()
         gl.glBegin(gl.GL_LINES)
-
-        
+  
     def BoxEsp(head_pos_x,head_pos_y,leg_pos_y,head_leg):
         gl.glColor3b(*(int(gui.get_value('boxcolor')[0] / 2), int(gui.get_value('boxcolor')[1] / 2), int(gui.get_value('boxcolor')[2] / 2)))
         gl.glVertex2f(head_pos_x - head_leg // 3 -1, screeny - leg_pos_y)
@@ -200,13 +203,12 @@ class esp:
         gl.glColor3b(*(120, 0, 0))
         gl.glVertex2f(head_pos_x - head_leg // 3 - 5 - thick, screeny - head_pos_y)
         gl.glVertex2f(head_pos_x - head_leg // 3 - 5 - thick, screeny - leg_pos_y + delta_hp) 
-                
+
+        
+        
 
 
     
-    
-    
-
 
 def cheat():
     gl.glBegin(gl.GL_LINES)
@@ -257,6 +259,7 @@ def cheat():
             if entity_team == local_player_team:continue
         if pm.read_int(entity_pawn + m_iHealth) < 1:continue
         
+        
         global bone_matrix
         game_scene = pm.read_longlong(entity_pawn + m_pGameSceneNode)
         bone_matrix = pm.read_longlong(game_scene + m_modelState + 0x80)
@@ -301,58 +304,65 @@ def cheat():
             
             if pm.read_int(local_player_pawn + m_iIDEntIndex) > 0 and keyboard.is_pressed(gui.get_value('trkey')) and gui.get_value('trig'):
                 mouse.click()
+ 
+        except:None
 
-        
-        except Exception as e:
-            print(e)
 
     
     gl.glColor3b(*(int(gui.get_value('aimcolor')[0] / 2), int(gui.get_value('aimcolor')[1] / 2), int(gui.get_value('aimcolor')[2] / 2)))
     try:
         to_shot = []
-        if gui.get_value('aim') and targets is not None:
-            fov_radius = gui.get_value('aimfov')
-            num_segments = 100
-            angle_step = 2 * math.pi / num_segments
-            for i in range(num_segments):
-                angle1 = i * angle_step
-                angle2 = (i + 1) * angle_step
-                x1 = fov_radius * math.cos(angle1)
-                y1 = fov_radius * math.sin(angle1)
-                x2 = fov_radius * math.cos(angle2)
-                y2 = fov_radius * math.sin(angle2)
-                gl.glVertex2d(screenx / 2 + x1, screeny / 2 - y1)
-                gl.glVertex2d(screenx / 2 + x2, screeny / 2 - y2)
+        aim_enabled = gui.get_value('aim')
+        fovcheck_enabled = gui.get_value('fovcheck')
+        fov_radius = gui.get_value('aimfov')
+        
+        if aim_enabled and targets is not None:
+            if fovcheck_enabled:
+                num_segments = 100
+                angle_step = 2 * math.pi / num_segments
+                for i in range(num_segments):
+                    angle1 = i * angle_step
+                    angle2 = (i + 1) * angle_step
+                    x1 = fov_radius * math.cos(angle1)
+                    y1 = fov_radius * math.sin(angle1)
+                    x2 = fov_radius * math.cos(angle2)
+                    y2 = fov_radius * math.sin(angle2)
+                    gl.glVertex2d(screenx / 2 + x1, screeny / 2 - y1)
+                    gl.glVertex2d(screenx / 2 + x2, screeny / 2 - y2)
 
             closest_target = None
             closest_distance = float('inf')
+
             for target in targets:
                 distance_from_center = math.sqrt((target[0] - screenx / 2) ** 2 + (target[1] - screeny / 2) ** 2)
-                if distance_from_center < fov_radius:
+                
+                if (fovcheck_enabled and distance_from_center < fov_radius) or not fovcheck_enabled:
                     if target not in to_shot:
                         to_shot.append(target)
+                    
                     if distance_from_center < closest_distance:
                         closest_distance = distance_from_center
                         closest_target = target
-
+            
             if closest_target:
                 target_x_dist = int(closest_target[0] - screenx / 2)
                 target_y_dist = int(closest_target[1] - screeny / 2)
                 
-
                 for xd in range(gui.get_value('strenght')):
                     if keyboard.is_pressed(gui.get_value('aimkey')):
                         win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, target_x_dist, target_y_dist, 0, 0)
-                        if gui.get_value('shaff')and abs(target_x_dist) <= 2 and abs(target_y_dist) <= 2:
+                        if gui.get_value('shaff') and abs(target_x_dist) <= 2 and abs(target_y_dist) <= 2:
                             mouse.click()
-       
 
-                try:
+            try:
+                if closest_target:
                     gl.glVertex2d(screenx / 2, screeny / 2)
                     gl.glVertex2d(closest_target[0], screeny - closest_target[1])
-                except:
-                    pass
-    except:None                
+            except:
+                pass
+
+    except:
+        None          
 
    
    
@@ -390,12 +400,11 @@ def main():
     gl.glMatrixMode(gl.GL_PROJECTION)
     gl.glLoadIdentity()
     gl.glMatrixMode(gl.GL_MODELVIEW)
-    while True:
-        try:
-            gw.getWindowsWithTitle(title='Counter-Strike 2')[0].activate()
-            gw.getWindowsWithTitle(title='Sussyware cs2')[0].activate()
-            break
-        except:None
+
+    try:
+        gw.getWindowsWithTitle(title='Counter-Strike 2')[0].activate()
+        gw.getWindowsWithTitle(title='Sussyware cs2')[0].activate()
+    except:None
 
     while True:
         try:
@@ -430,12 +439,12 @@ def startmain():
     try:main()
     except:main()
 
+def change_tab(sender):
 
-
-
-
-
-
+    if sender == 1:
+        gui.set_value("bar1", "tab1")
+    elif sender == 2:
+        gui.set_value("bar1", "tab2")
 
 def threads():
     threading.Thread(target=startmain, daemon=True).start()
@@ -443,25 +452,49 @@ def threads():
 def close_viewport():
     gui.stop_dearpygui()
 
+def move_gui():
+    while True:
+        mouse_pos = mouse.get_position()
+        gui.set_viewport_pos(pos=mouse_pos)
+        if mouse.is_pressed('left'):break
+        
+
 def minimize_viewport():
     gui.minimize_viewport()
+
+def change_tab(sender, data):
+    gui.hide_item('tab1')
+    gui.hide_item('tab2')
+    gui.hide_item('tab3')
+
+    if sender == 'tab1_button':
+        gui.show_item('tab1')
+    elif sender == 'tab2_button':
+        gui.show_item('tab2')
+    elif sender == 'tab3_button':
+        gui.show_item('tab3')
 
 gui.create_context()
 gui.create_viewport(title='Sussyware cs2', width=500, height=500, decorated=False)
 gui.setup_dearpygui()
 gui.set_viewport_resizable(False)
 
-
 with gui.window(label='', width=500, height=500, no_title_bar=True, no_resize=True, no_move=True, show=True, tag='mainwindow'):
+    gui.add_spacer(width=10)
+    gui.add_text("Sussyware cs2", color=(255, 255, 255, 255), tag="title_text", bullet=True)
+    gui.add_button(label="-", callback=minimize_viewport, width=50, height=30, pos=(400, 0))
+    gui.add_button(label="X", callback=close_viewport, width=50, height=30, pos=(450, 0))
+    gui.add_button(label="Move Gui", callback=move_gui, width=100, height=20, pos=(200, 0))
+    gui.add_spacer(width=10)
     with gui.group(horizontal=True):
-        gui.add_text("Sussyware cs2", color=(255, 255, 255, 255), tag="title_text", bullet=True)
-        gui.add_spacer(width=255)
-        with gui.group(horizontal=True):
-            gui.add_button(label="-", callback=minimize_viewport, width=50, height=30)
-            gui.add_button(label="X", callback=close_viewport, width=50, height=30)
-
-    with gui.tab_bar(label='cheat'):
-        with gui.tab(label='Visual'):
+        with gui.group():
+            gui.add_button(label="Visual", callback=change_tab, tag='tab1_button', width=100,height=30)
+            gui.add_button(label="Combat", callback=change_tab, tag='tab2_button', width=100,height=30)     
+            gui.add_button(label="Checks", callback=change_tab, tag='tab3_button', width=100,height=30)
+        
+        with gui.child_window(tag='tab1', show=True):          
+            gui.add_text('Visual')
+            gui.add_spacer(width=10)
             with gui.group(horizontal=True):
                 gui.add_checkbox(label='Box Esp ', tag='esp')
                 gui.add_spacer(width=5)
@@ -472,58 +505,73 @@ with gui.window(label='', width=500, height=500, no_title_bar=True, no_resize=Tr
                 gui.add_spacer(width=5)
                 gui.add_color_edit(label='', tag='bonecolor', default_value=[255.0, 255.0, 255.0, 255.0], height=180, width=180)
             gui.add_spacer(width=5)
-            with gui.group(horizontal=True):
-                gui.add_checkbox(label='HP Bar  ', tag='hpbar', default_value=True)
+            gui.add_checkbox(label='HP Bar  ', tag='hpbar', default_value=True)
             gui.add_spacer(width=5)
-            with gui.group(horizontal=True):
-                gui.add_checkbox(label='Fill Box', tag='fillbox', default_value=True)
+            gui.add_checkbox(label='Fill Box', tag='fillbox', default_value=True)
             gui.add_spacer(width=5)
             with gui.group(horizontal=True):
                 gui.add_checkbox(label='Arrows  ', tag='tracs')
                 gui.add_spacer(width=5)
                 gui.add_color_edit(label='', tag='arrcolor', default_value=[255.0, 255.0, 255.0, 255.0], height=180, width=180)
-            gui.add_spacer(width=5)
-            gui.add_checkbox(label='Team Check', tag='tcheck', default_value=True)
-                
-        with gui.tab(label='Combat'):
+
+        with gui.child_window(tag='tab2', show=False):
+            gui.add_text('Combat')
+            gui.add_spacer(width=10)
             with gui.collapsing_header(label='Triggerbot Settings'):
-                gui.add_input_text(label='Trigger Key', tag='trkey')
-                gui.add_checkbox(label='Legit Triggerbot (can target objects like doors)', tag='trig')
+                gui.add_input_text(label='Trigger Key', tag='trkey', hint='Enter Key')
+                gui.add_checkbox(label='Legit Triggerbot', tag='trig')
                 gui.add_separator()
             with gui.collapsing_header(label='Aimbot Settings'):
                 gui.add_slider_int(label='Aim Fov', tag='aimfov', min_value=10, max_value=360, default_value=150)
-                gui.add_slider_int(label='Aim Strength', tag='strenght', min_value=1, max_value=5, default_value=3)
-                gui.add_input_text(label='Aimbot Key', tag='aimkey', default_value='v')
+                with gui.group(horizontal=True):
+                    gui.add_checkbox(label='Fov Check', tag='fovcheck', default_value=True)
+                    gui.add_color_edit(label='Fov Color', tag='aimcolor', default_value=[255.0, 255.0, 255.0, 255.0], height=180, width=160)
+                gui.add_slider_int(label='Aim Strength', tag='strenght', min_value=1, max_value=4, default_value=3)
+                gui.add_input_text(label='Aimbot Key', tag='aimkey', default_value='v', hint='Enter Key')
                 gui.add_checkbox(label='Aimbot', tag='aim', default_value=True)
                 gui.add_checkbox(label='Shot After Aim', tag='shaff')
-                gui.add_color_edit(label='Fov Color', tag='aimcolor', default_value=[255.0, 255.0, 255.0, 255.0], height=180, width=180)
-            gui.add_checkbox(label='Team Check', source='tcheck')
+        
+        with gui.child_window(tag='tab3', show=False):
+            gui.add_text('Checks')
+            gui.add_spacer(width=10)
+            gui.add_checkbox(label='Team Check', tag='tcheck', default_value=True)
 
 
+with gui.font_registry():
+    custom_font = gui.add_font("Assets/font.ttf", 18)
+gui.bind_font(custom_font)
 
 with gui.theme() as theme:
     with gui.theme_component(gui.mvAll):
-        gui.add_theme_color(gui.mvThemeCol_WindowBg, (0, 0, 0, 255))
-        gui.add_theme_color(gui.mvThemeCol_Button, (50, 50, 50, 255))
+        gui.add_theme_color(gui.mvThemeCol_WindowBg, (30, 30, 30, 255))
+        gui.add_theme_color(gui.mvThemeCol_Button, (60, 60, 60, 255))
         gui.add_theme_color(gui.mvThemeCol_Text, (255, 255, 255, 255))
-        gui.add_theme_color(gui.mvThemeCol_Tab, (50, 50, 50, 255))
-        gui.add_theme_color(gui.mvThemeCol_FrameBg, (50, 50, 50, 255))
-        gui.add_theme_color(gui.mvThemeCol_SliderGrab, (150, 150, 150, 255))
+        gui.add_theme_color(gui.mvThemeCol_Tab, (60, 60, 60, 255))
+        gui.add_theme_color(gui.mvThemeCol_FrameBg, (60, 60, 60, 255))
+        gui.add_theme_color(gui.mvThemeCol_SliderGrab, (100, 100, 100, 255))
         gui.add_theme_color(gui.mvThemeCol_FrameBgActive, (90, 90, 90, 255))
         gui.add_theme_color(gui.mvThemeCol_TabActive, (90, 90, 90, 255))
         gui.add_theme_color(gui.mvThemeCol_TabHovered, (70, 70, 70, 255))
         gui.add_theme_color(gui.mvThemeCol_FrameBgHovered, (70, 70, 70, 255))
         gui.add_theme_color(gui.mvThemeCol_ButtonHovered, (80, 80, 80, 255))
-        gui.add_theme_color(gui.mvThemeCol_SliderGrabActive, (255, 0, 0, 255))
-        gui.add_theme_color(gui.mvThemeCol_SliderGrab, (255, 0, 0, 255))
-        gui.add_theme_color(gui.mvThemeCol_PopupBg, (0, 0, 0, 255))
-        gui.add_theme_color(gui.mvThemeCol_CheckMark, (255, 0, 0, 255))
+        gui.add_theme_color(gui.mvThemeCol_SliderGrabActive, (100, 100, 100, 255))
+        gui.add_theme_color(gui.mvThemeCol_CheckMark, (255, 255, 255, 255))
         gui.add_theme_color(gui.mvThemeCol_HeaderHovered, (70, 70, 70, 255))
+        gui.add_theme_color(gui.mvThemeCol_ChildBg, (20, 20, 20, 255))
+        gui.add_theme_color(gui.mvThemeCol_ButtonActive, (255, 255, 255, 255))
+        gui.add_theme_color(gui.mvThemeCol_BorderShadow, 0)
+        gui.add_theme_color(gui.mvThemeCol_Border, (60, 60, 60, 255))
+        
+        gui.add_theme_style(gui.mvStyleVar_ChildRounding,0)
+        gui.add_theme_style(gui.mvStyleVar_WindowBorderSize,5)
+        gui.add_theme_style(gui.mvStyleVar_ChildBorderSize,2)
+
+
+
 
 gui.bind_theme(theme)
 
 gui.show_viewport()
-gui.set_viewport_pos(pos=(screenx/2-250,screeny/2-250))
 threads()
 gui.start_dearpygui()
 gui.destroy_context()
