@@ -8,28 +8,12 @@ import math, requests
 
 
 
-
-
-
-
-
 screenx = tkinter.Tk().winfo_screenwidth()
 screeny = tkinter.Tk().winfo_screenheight()
 
 targets = []
 
 print('getting offsets')
-
-# dwEntityList = 27126136
-# dwLocalPlayerPawn = 25438952
-# dwViewMatrix = 27527936
-# m_iTeamNum = 995
-# m_lifeState = 840
-# m_pGameSceneNode = 808
-# m_modelState = 368
-# m_hPlayerPawn = 2060
-# m_iHealth = 836
-# m_iIDEntIndex = 5208
 
 
 try:
@@ -63,8 +47,6 @@ except:
     exit(0)
 
 
-
-
 print('getting cs2 process')
 try:
     pm = pymem.Pymem("cs2.exe")
@@ -81,35 +63,95 @@ except:
             print('waiting for cs2.exe')
             time.sleep(2)
 
-def world_to_screen(matrix, posx, posy, posz, width, height):
-    screenW = (matrix[12] * posx) + (matrix[13] * posy) + (matrix[14] * posz) + matrix[15]
-    if screenW > 0.001:
-        screenX = (matrix[0] * posx) + (matrix[1] * posy) + (matrix[2] * posz) + matrix[3]
-        screenY = (matrix[4] * posx) + (matrix[5] * posy) + (matrix[6] * posz) + matrix[7]
-
-        camX = width / 2
-        camY = height / 2
-
-        x = camX + (camX * screenX / screenW)//1
-        y = camY - (camY * screenY / screenW)//1
-
-        return x, y
-    return -999,-999
-
-
 bone_pairs = [
     (1, 5), (5, 8), (8, 9), (9, 11),
     (5, 13), (13, 14), (14, 16),
     (1, 23), (23, 24), (1, 26), (26, 27)
 ]
 
-def get_bone_pos(bone_id):
-    boneX = pm.read_float(bone_matrix + bone_id * 0x20)
-    boneY = pm.read_float(bone_matrix + bone_id * 0x20 + 0x4)
-    boneZ = pm.read_float(bone_matrix + bone_id * 0x20 + 0x8)          
-    bone_pos_x, bone_pos_y = world_to_screen(view_matrix, boneX, boneY, boneZ, screenx, screeny)
-    return [bone_pos_x, bone_pos_y]
- 
+class calcs:
+    def world_to_screen(matrix, posx, posy, posz, width, height):
+        screenW = (matrix[12] * posx) + (matrix[13] * posy) + (matrix[14] * posz) + matrix[15]
+        if screenW > 0.001:
+            screenX = (matrix[0] * posx) + (matrix[1] * posy) + (matrix[2] * posz) + matrix[3]
+            screenY = (matrix[4] * posx) + (matrix[5] * posy) + (matrix[6] * posz) + matrix[7]
+
+            camX = width / 2
+            camY = height / 2
+
+            x = camX + (camX * screenX / screenW)//1
+            y = camY - (camY * screenY / screenW)//1
+
+            return x, y
+        return -999,-999
+
+
+    def get_bone_pos(bone_id):
+        boneX = pm.read_float(bone_matrix + bone_id * 0x20)
+        boneY = pm.read_float(bone_matrix + bone_id * 0x20 + 0x4)
+        boneZ = pm.read_float(bone_matrix + bone_id * 0x20 + 0x8)          
+        bone_pos_x, bone_pos_y = calcs.world_to_screen(view_matrix, boneX, boneY, boneZ, screenx, screeny)
+        return [bone_pos_x, bone_pos_y]
+
+class combat:
+    def aimbot(targets):
+        gl.glColor3b(*(int(gui.get_value('aimcolor')[0] / 2), int(gui.get_value('aimcolor')[1] / 2), int(gui.get_value('aimcolor')[2] / 2)))
+        try:
+            to_shot = []
+            fovcheck_status = gui.get_value('fovcheck')
+            fov_radius = gui.get_value('aimfov')
+            
+            if targets is not None:
+                if fovcheck_status:
+                    num_segments = 100
+                    angle_step = 2 * math.pi / num_segments
+                    for i in range(num_segments):
+                        angle1 = i * angle_step
+                        angle2 = (i + 1) * angle_step
+                        x1 = fov_radius * math.cos(angle1)
+                        y1 = fov_radius * math.sin(angle1)
+                        x2 = fov_radius * math.cos(angle2)
+                        y2 = fov_radius * math.sin(angle2)
+                        gl.glVertex2d(screenx / 2 + x1, screeny / 2 - y1)
+                        gl.glVertex2d(screenx / 2 + x2, screeny / 2 - y2)
+
+                closest_target = None
+                closest_distance = float('inf')
+
+                for target in targets:
+                    distance_from_center = math.sqrt((target[0] - screenx / 2) ** 2 + (target[1] - screeny / 2) ** 2)
+                    
+                    if (fovcheck_status and distance_from_center < fov_radius) or not fovcheck_status:
+                        if target not in to_shot:
+                            to_shot.append(target)
+                        
+                        if distance_from_center < closest_distance:
+                            closest_distance = distance_from_center
+                            closest_target = target
+                
+                if closest_target:
+                    target_x_dist = int(closest_target[0] - screenx / 2)
+                    target_y_dist = int(closest_target[1] - screeny / 2)
+                    
+                    for xd in range(gui.get_value('strenght')):
+                        if keyboard.is_pressed(gui.get_value('aimkey')):
+                            win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, target_x_dist, target_y_dist, 0, 0)
+                            if gui.get_value('shaff') and abs(target_x_dist) <= 2 and abs(target_y_dist) <= 2:
+                                mouse.click()
+
+                try:
+                    if closest_target:
+                        gl.glVertex2d(screenx / 2, screeny / 2)
+                        gl.glVertex2d(closest_target[0], screeny - closest_target[1])
+                except:
+                    pass
+
+        except:
+            None   
+    def triggerbot():
+        if pm.read_int(local_player_pawn + m_iIDEntIndex) > 0 and keyboard.is_pressed(gui.get_value('trkey')):
+            mouse.click()
+
 class esp:
     def arrow(target_x, target_y, screen_center_x, screen_center_y, distance_from_center):
         gl.glColor3b(*(int(gui.get_value('arrcolor')[0] / 2), int(gui.get_value('arrcolor')[1] / 2), int(gui.get_value('arrcolor')[2] / 2)))
@@ -154,19 +196,51 @@ class esp:
   
     def BoxEsp(head_pos_x,head_pos_y,leg_pos_y,head_leg):
         gl.glColor3b(*(int(gui.get_value('boxcolor')[0] / 2), int(gui.get_value('boxcolor')[1] / 2), int(gui.get_value('boxcolor')[2] / 2)))
-        gl.glVertex2f(head_pos_x - head_leg // 3 -1, screeny - leg_pos_y)
-        gl.glVertex2f(head_pos_x + head_leg // 3, screeny - leg_pos_y)
-        gl.glVertex2f(head_pos_x - head_leg // 3, screeny - leg_pos_y)
-        gl.glVertex2f(head_pos_x - head_leg // 3, screeny - head_pos_y)
-        gl.glVertex2f(head_pos_x + head_leg // 3, screeny - leg_pos_y)
-        gl.glVertex2f(head_pos_x + head_leg // 3, screeny - head_pos_y)
-        gl.glVertex2f(head_pos_x - head_leg // 3, screeny - head_pos_y)
-        gl.glVertex2f(head_pos_x + head_leg // 3, screeny - head_pos_y)
+        
+        if gui.get_value('boxtype')== '1':
+            gl.glVertex2f(head_pos_x - head_leg // 3 -1, screeny - leg_pos_y)
+            gl.glVertex2f(head_pos_x + head_leg // 3, screeny - leg_pos_y)
+            gl.glVertex2f(head_pos_x - head_leg // 3, screeny - leg_pos_y)
+            gl.glVertex2f(head_pos_x - head_leg // 3, screeny - head_pos_y)
+            gl.glVertex2f(head_pos_x + head_leg // 3, screeny - leg_pos_y)
+            gl.glVertex2f(head_pos_x + head_leg // 3, screeny - head_pos_y)
+            gl.glVertex2f(head_pos_x - head_leg // 3, screeny - head_pos_y)
+            gl.glVertex2f(head_pos_x + head_leg // 3, screeny - head_pos_y)
+        
+        elif gui.get_value('boxtype')== '2':
+            line_length = (head_leg // 5)
+
+            gl.glVertex2f(head_pos_x - head_leg // 3 - 1, screeny - head_pos_y)
+            gl.glVertex2f(head_pos_x - head_leg // 3 - 1 + line_length, screeny - head_pos_y)
+
+            gl.glVertex2f(head_pos_x + head_leg // 3 - line_length, screeny - head_pos_y)
+            gl.glVertex2f(head_pos_x + head_leg // 3, screeny - head_pos_y)
+
+            gl.glVertex2f(head_pos_x - head_leg // 3 - 1, screeny - leg_pos_y)
+            gl.glVertex2f(head_pos_x - head_leg // 3 - 1 + line_length, screeny - leg_pos_y)
+
+            gl.glVertex2f(head_pos_x + head_leg // 3 - line_length, screeny - leg_pos_y)
+            gl.glVertex2f(head_pos_x + head_leg // 3, screeny - leg_pos_y)
+
+            gl.glVertex2f(head_pos_x - head_leg // 3, screeny - head_pos_y)
+            gl.glVertex2f(head_pos_x - head_leg // 3, screeny - head_pos_y - line_length)
+
+            gl.glVertex2f(head_pos_x - head_leg // 3, screeny - leg_pos_y + line_length)
+            gl.glVertex2f(head_pos_x - head_leg // 3, screeny - leg_pos_y)
+
+            gl.glVertex2f(head_pos_x + head_leg // 3, screeny - head_pos_y)
+            gl.glVertex2f(head_pos_x + head_leg // 3, screeny - head_pos_y - line_length)
+
+            gl.glVertex2f(head_pos_x + head_leg // 3, screeny - leg_pos_y + line_length)
+            gl.glVertex2f(head_pos_x + head_leg // 3, screeny - leg_pos_y)
+
+
+
 
     def draw_bone(bone1_id, bone2_id):
         gl.glColor3b(*(int(gui.get_value('bonecolor')[0] / 2), int(gui.get_value('bonecolor')[1] / 2), int(gui.get_value('bonecolor')[2] / 2)))
-        bone1 = get_bone_pos(bone1_id)
-        bone2 = get_bone_pos(bone2_id)
+        bone1 = calcs.get_bone_pos(bone1_id)
+        bone2 = calcs.get_bone_pos(bone2_id)
         gl.glVertex2f(bone1[0], screeny - bone1[1])
         gl.glVertex2f(bone2[0], screeny - bone2[1])
 
@@ -204,16 +278,14 @@ class esp:
         gl.glVertex2f(head_pos_x - head_leg // 3 - 5 - thick, screeny - head_pos_y)
         gl.glVertex2f(head_pos_x - head_leg // 3 - 5 - thick, screeny - leg_pos_y + delta_hp) 
 
-        
-        
 
-
+def mainloop():
     
-
-def cheat():
     gl.glBegin(gl.GL_LINES)
-    global view_matrix
+    
+    global view_matrix, local_player_pawn
     view_matrix = []
+    
     for i in range(16):
         temp_mat_val = pm.read_float(client + dwViewMatrix + i * 4)
         view_matrix.append(temp_mat_val)
@@ -264,11 +336,12 @@ def cheat():
         game_scene = pm.read_longlong(entity_pawn + m_pGameSceneNode)
         bone_matrix = pm.read_longlong(game_scene + m_modelState + 0x80)
 
+
         try:
             
-            head_pos_x = get_bone_pos(6)[0]
-            head_pos_y = get_bone_pos(6)[1]
-            leg_pos_y = get_bone_pos(28)[1]
+            head_pos_x = calcs.get_bone_pos(6)[0]
+            head_pos_y = calcs.get_bone_pos(6)[1]
+            leg_pos_y = calcs.get_bone_pos(28)[1]
 
             if gui.get_value('aim') and head_pos_x != -999 and head_pos_y != -999:
                 targets.append([head_pos_x,head_pos_y,entity_pawn])
@@ -283,88 +356,28 @@ def cheat():
 
             if gui.get_value('fillbox'):
                 esp.fillbox(head_pos_x,head_pos_y,leg_pos_y,head_leg)
-     
-      
+       
             if gui.get_value('esp'):
                 esp.BoxEsp(head_pos_x,head_pos_y,leg_pos_y,head_leg)
-      
-         
+           
             if gui.get_value('tracs'):
                 esp.arrow(head_pos_x,screeny-head_pos_y,screenx/2,screeny/2,75)
-
 
             if gui.get_value('bonesp'):
                 for bone1_id, bone2_id in bone_pairs:
                     esp.draw_bone(bone1_id, bone2_id)
 
-
             if gui.get_value('hpbar'):
                 esp.HPbar(head_pos_x,head_pos_y,leg_pos_y,head_leg,pm.read_int(entity_pawn + m_iHealth)/100)
-
-            
-            if pm.read_int(local_player_pawn + m_iIDEntIndex) > 0 and keyboard.is_pressed(gui.get_value('trkey')) and gui.get_value('trig'):
-                mouse.click()
+ 
  
         except:None
 
-
+    if gui.get_value('aim'):
+        combat.aimbot(targets)
     
-    gl.glColor3b(*(int(gui.get_value('aimcolor')[0] / 2), int(gui.get_value('aimcolor')[1] / 2), int(gui.get_value('aimcolor')[2] / 2)))
-    try:
-        to_shot = []
-        aim_enabled = gui.get_value('aim')
-        fovcheck_enabled = gui.get_value('fovcheck')
-        fov_radius = gui.get_value('aimfov')
-        
-        if aim_enabled and targets is not None:
-            if fovcheck_enabled:
-                num_segments = 100
-                angle_step = 2 * math.pi / num_segments
-                for i in range(num_segments):
-                    angle1 = i * angle_step
-                    angle2 = (i + 1) * angle_step
-                    x1 = fov_radius * math.cos(angle1)
-                    y1 = fov_radius * math.sin(angle1)
-                    x2 = fov_radius * math.cos(angle2)
-                    y2 = fov_radius * math.sin(angle2)
-                    gl.glVertex2d(screenx / 2 + x1, screeny / 2 - y1)
-                    gl.glVertex2d(screenx / 2 + x2, screeny / 2 - y2)
-
-            closest_target = None
-            closest_distance = float('inf')
-
-            for target in targets:
-                distance_from_center = math.sqrt((target[0] - screenx / 2) ** 2 + (target[1] - screeny / 2) ** 2)
-                
-                if (fovcheck_enabled and distance_from_center < fov_radius) or not fovcheck_enabled:
-                    if target not in to_shot:
-                        to_shot.append(target)
-                    
-                    if distance_from_center < closest_distance:
-                        closest_distance = distance_from_center
-                        closest_target = target
-            
-            if closest_target:
-                target_x_dist = int(closest_target[0] - screenx / 2)
-                target_y_dist = int(closest_target[1] - screeny / 2)
-                
-                for xd in range(gui.get_value('strenght')):
-                    if keyboard.is_pressed(gui.get_value('aimkey')):
-                        win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, target_x_dist, target_y_dist, 0, 0)
-                        if gui.get_value('shaff') and abs(target_x_dist) <= 2 and abs(target_y_dist) <= 2:
-                            mouse.click()
-
-            try:
-                if closest_target:
-                    gl.glVertex2d(screenx / 2, screeny / 2)
-                    gl.glVertex2d(closest_target[0], screeny - closest_target[1])
-            except:
-                pass
-
-    except:
-        None          
-
-   
+    if gui.get_value('trig'):
+        combat.triggerbot()
    
     targets.clear()
     gl.glEnd()
@@ -379,17 +392,16 @@ def cheat():
 
 
 def main():
-    print('ok')
     glfw.init()
     glfw.window_hint(glfw.TRANSPARENT_FRAMEBUFFER, True)
     glfw.window_hint(glfw.FLOATING, True)
     glfw.window_hint(glfw.DECORATED, False)
     global window
-    window = glfw.create_window(screenx, screeny, 'Crosshairlabrender', None, None)
+    window = glfw.create_window(screenx, screeny, 'sussyware', None, None)
     glfw.make_context_current(window)
     gl.glOrtho(0, screenx, 0, screeny, -1, 1)
 
-    handle = win32gui.FindWindow(0, 'Crosshairlabrender')
+    handle = win32gui.FindWindow(0, 'sussyware')
 
     exStyle = win32gui.GetWindowLong(handle, win32con.GWL_EXSTYLE)
     win32gui.SetWindowLong(handle, win32con.GWL_EXSTYLE, exStyle | win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT)
@@ -415,7 +427,7 @@ def main():
             time.sleep(0.0000001)
             gl.glLineWidth(thick)
             
-            cheat()
+            mainloop()
         
             if keyboard.is_pressed('ins'):
                 while True:
@@ -435,9 +447,7 @@ def main():
             
 
 
-def startmain():
-    try:main()
-    except:main()
+
 
 def change_tab(sender):
 
@@ -447,7 +457,7 @@ def change_tab(sender):
         gui.set_value("bar1", "tab2")
 
 def threads():
-    threading.Thread(target=startmain, daemon=True).start()
+    threading.Thread(target=main, daemon=True).start()
 
 def close_viewport():
     gui.stop_dearpygui()
@@ -482,9 +492,9 @@ gui.set_viewport_resizable(False)
 with gui.window(label='', width=500, height=500, no_title_bar=True, no_resize=True, no_move=True, show=True, tag='mainwindow'):
     gui.add_spacer(width=10)
     gui.add_text("Sussyware cs2", color=(255, 255, 255, 255), tag="title_text", bullet=True)
-    gui.add_button(label="-", callback=minimize_viewport, width=50, height=30, pos=(400, 0))
-    gui.add_button(label="X", callback=close_viewport, width=50, height=30, pos=(450, 0))
-    gui.add_button(label="Move Gui", callback=move_gui, width=100, height=20, pos=(200, 0))
+    gui.add_button(label="-", callback=minimize_viewport, width=50, height=30, pos=(400, 5))
+    gui.add_button(label="X", callback=close_viewport, width=50, height=30, pos=(450, 5))
+    gui.add_button(label="Move Gui", callback=move_gui, width=100, height=20, pos=(200, 5))
     gui.add_spacer(width=10)
     with gui.group(horizontal=True):
         with gui.group():
@@ -495,24 +505,20 @@ with gui.window(label='', width=500, height=500, no_title_bar=True, no_resize=Tr
         with gui.child_window(tag='tab1', show=True):          
             gui.add_text('Visual')
             gui.add_spacer(width=10)
-            with gui.group(horizontal=True):
-                gui.add_checkbox(label='Box Esp ', tag='esp')
-                gui.add_spacer(width=5)
+            with gui.collapsing_header(label='Box Esp'):
+                gui.add_combo(label='Type',tag='boxtype',items=['1','2'],default_value='1')                
                 gui.add_color_edit(label='', tag='boxcolor', default_value=[255.0, 255.0, 255.0, 255.0], height=180, width=180)
-            gui.add_spacer(width=5)
-            with gui.group(horizontal=True):
-                gui.add_checkbox(label='Bone Esp', tag='bonesp', default_value=True)
-                gui.add_spacer(width=5)
+                gui.add_checkbox(label='Fill Box', tag='fillbox', default_value=True)
+                gui.add_checkbox(label='Box Esp ', tag='esp')
+            with gui.collapsing_header(label='Bone Esp'):
                 gui.add_color_edit(label='', tag='bonecolor', default_value=[255.0, 255.0, 255.0, 255.0], height=180, width=180)
-            gui.add_spacer(width=5)
-            gui.add_checkbox(label='HP Bar  ', tag='hpbar', default_value=True)
-            gui.add_spacer(width=5)
-            gui.add_checkbox(label='Fill Box', tag='fillbox', default_value=True)
-            gui.add_spacer(width=5)
-            with gui.group(horizontal=True):
-                gui.add_checkbox(label='Arrows  ', tag='tracs')
-                gui.add_spacer(width=5)
+                gui.add_checkbox(label='Bone Esp', tag='bonesp', default_value=True)
+            with gui.collapsing_header(label='Hp Bar'):
+                gui.add_checkbox(label='HP Bar  ', tag='hpbar', default_value=True)
+            with gui.collapsing_header(label='Arrows'):
                 gui.add_color_edit(label='', tag='arrcolor', default_value=[255.0, 255.0, 255.0, 255.0], height=180, width=180)
+                gui.add_checkbox(label='Arrows  ', tag='tracs')
+
 
         with gui.child_window(tag='tab2', show=False):
             gui.add_text('Combat')
@@ -537,9 +543,7 @@ with gui.window(label='', width=500, height=500, no_title_bar=True, no_resize=Tr
             gui.add_checkbox(label='Team Check', tag='tcheck', default_value=True)
 
 
-with gui.font_registry():
-    custom_font = gui.add_font("Assets/font.ttf", 18)
-gui.bind_font(custom_font)
+
 
 with gui.theme() as theme:
     with gui.theme_component(gui.mvAll):
